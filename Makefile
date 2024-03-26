@@ -3,10 +3,8 @@ SOURCES = $(wildcard src/*.c)
 OBJECTS = $(patsubst src/%.c, obj/%.o, $(SOURCES))
 
 run: clean default
-	./$(TARGET)
 	./$(TARGET) -n -f employee.db
 	./$(TARGET) -f employee.db
-	./$(TARGET) -a -f employee.db
 
 clean:
 	rm -f bin/*

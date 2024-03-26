@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include "file.h"
+#include "common.h"
+
 void print_usage(char *argv[]) {
     printf("Usage: %s [-n] -f <database_file>\n", argv[0]);
     printf("    -n    create new database file\n");
@@ -26,15 +29,29 @@ int main(int argc, char *argv[]) {
             default:
                 printf("Unknown option\n");
                 print_usage(argv);
-                return 0;
+                return STATUS_ERROR;
         }
     }
 
     if (filepath == NULL) {
         printf("Filepath is a required arguement\n");
         print_usage(argv);
-        return 0;
+        return STATUS_ERROR;
     }
 
-    return 0;
+    int fd = -1;
+    if (newfile) {
+        if ((fd = create_file(filepath)) == STATUS_ERROR) {
+            printf("Unable to create database file\n");
+            return STATUS_ERROR;
+        }
+    } else {
+        if ((fd = open_file(filepath)) == STATUS_ERROR) {
+            printf("Unable to open database file\n");
+            return STATUS_ERROR;
+        }
+    }
+
+    close(fd);
+    return STATUS_SUCCESS;
 }
