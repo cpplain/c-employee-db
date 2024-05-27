@@ -1,9 +1,9 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
-
-#include "file.h"
 #include "common.h"
+#include "file.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
 
 void print_usage(char *argv[]) {
     printf("Usage: %s [-n] -f <database_file>\n", argv[0]);
@@ -19,17 +19,17 @@ int main(int argc, char *argv[]) {
 
     while ((ch = getopt(argc, argv, "nf:")) != -1) {
         switch (ch) {
-            case 'n':
-                newfile = true;
-                break;
-            case 'f':
-                filepath = optarg;
-                break;
-            case '?':
-            default:
-                printf("Unknown option\n");
-                print_usage(argv);
-                return STATUS_ERROR;
+        case 'n':
+            newfile = true;
+            break;
+        case 'f':
+            filepath = optarg;
+            break;
+        case '?':
+        default:
+            printf("Unknown option\n");
+            print_usage(argv);
+            return STATUS_ERROR;
         }
     }
 

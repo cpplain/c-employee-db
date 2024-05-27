@@ -1,9 +1,9 @@
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 #include "file.h"
 #include "common.h"
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
 
 int create_file(char *filename) {
     int fd = -1;
@@ -27,6 +27,6 @@ int open_file(char *filename) {
         perror("open");
         return STATUS_ERROR;
     }
-    
+
     return fd;
 }
