@@ -1,20 +1,30 @@
-TARGET = bin/dbcli
-SOURCES = $(wildcard src/*.c)
-OBJECTS = $(patsubst src/%.c, obj/%.o, $(SOURCES))
+SHELL = /bin/sh
 
-run: clean default
-	./$(TARGET) -n -f employee.db
-	./$(TARGET) -f employee.db
+dirs = bin obj temp
 
-clean:
-	rm -f bin/*
-	rm -f obj/*.o
-	rm -f *.db
+BIN = bin/dbcli
+SRCS = $(wildcard src/*.c)
+OBJS = $(patsubst src/%.c, obj/%.o, $(SRCS))
 
-default: $(TARGET)
+.PHONY: all
+all: test
 
-$(TARGET): $(OBJECTS)
+$(BIN): $(OBJS) | bin
 	gcc -o $@ $?
 
-obj/%.o : src/%.c
-	gcc -c -Iinclude -o $@ $< 
+obj/%.o: src/%.c | obj
+	gcc -c -o $@ $<
+
+$(dirs):
+	mkdir -p $@
+
+.PHONY: test
+test: clean $(BIN) | temp
+	$(BIN) -n -f temp/test.db
+	$(BIN) -f temp/test.db
+
+.PHONY: clean
+clean:
+	rm -rf bin
+	rm -rf obj
+	rm -rf temp

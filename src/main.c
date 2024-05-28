@@ -1,5 +1,6 @@
 #include "common.h"
 #include "file.h"
+#include "parse.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,9 +41,17 @@ int main(int argc, char *argv[]) {
     }
 
     int fd = -1;
+    struct header *header = NULL;
+
     if (newfile) {
         if ((fd = create_file(filepath)) == STATUS_ERROR) {
             printf("Unable to create database file\n");
+            return STATUS_ERROR;
+        }
+
+        if (create_header(&header) == STATUS_ERROR) {
+            printf("Unable to create database file header\n");
+            close(fd);
             return STATUS_ERROR;
         }
     } else {
@@ -50,6 +59,18 @@ int main(int argc, char *argv[]) {
             printf("Unable to open database file\n");
             return STATUS_ERROR;
         }
+
+        if (validate_header(fd, &header) == STATUS_ERROR) {
+            printf("Databse file is not valid\n");
+            close(fd);
+            return STATUS_ERROR;
+        }
+    }
+
+    if (output_file(fd, header) == STATUS_ERROR) {
+        printf("Unable to output data to database file\n");
+        close(fd);
+        return STATUS_ERROR;
     }
 
     close(fd);
