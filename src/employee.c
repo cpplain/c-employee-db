@@ -39,6 +39,14 @@ int read_employees(int fd, struct header *header, struct employee **employeesOut
     return STATUS_SUCCESS;
 }
 
+void list_employees(int count, struct employee *employees) {
+    int i;
+    for (i = 0; i < count; i++) {
+        printf("name: %s, address: %s, hours: %d\n", employees[i].name, employees[i].address,
+               employees[i].hours);
+    }
+}
+
 int add_employee(struct header *header, struct employee *employees, char *addstring) {
     char *name = strtok(addstring, ",");
     char *address = strtok(NULL, ",");

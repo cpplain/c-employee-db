@@ -9,27 +9,31 @@
 #include <unistd.h>
 
 void print_usage(char *argv[]) {
-    printf("Usage: %s [-n] -f <database_file> [-a '<name>,<address>,<hours>']\n"
-           "    -n  create new database file\n"
-           "    -f  path to database file (required)\n"
-           "    -a  add employee to database\n",
-           argv[0]);
+    printf("usage: ./edb -f <database_file> [-n] [-l] [-a '<name>,<address>,<hours>']\n"
+           "       -f   path to database file (required)\n"
+           "       -n   create new database file\n"
+           "       -l   list all employees\n"
+           "       -a   add employee to database\n");
     return;
 }
 
 int main(int argc, char *argv[]) {
     int ch;
-    bool newfile = false;
     char *filepath = NULL;
     char *addstring = NULL;
+    bool newfile = false;
+    bool list = false;
 
-    while ((ch = getopt(argc, argv, "nf:a:")) != -1) {
+    while ((ch = getopt(argc, argv, "f:nla:")) != -1) {
         switch (ch) {
+        case 'f':
+            filepath = optarg;
+            break;
         case 'n':
             newfile = true;
             break;
-        case 'f':
-            filepath = optarg;
+        case 'l':
+            list = true;
             break;
         case 'a':
             addstring = optarg;
@@ -90,6 +94,10 @@ int main(int argc, char *argv[]) {
             close(fd);
             return STATUS_ERROR;
         }
+    }
+
+    if (list) {
+        list_employees(header->count, employees);
     }
 
     if (write_file(fd, header, employees) == STATUS_ERROR) {
