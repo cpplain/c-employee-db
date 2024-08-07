@@ -87,9 +87,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (addstring) {
-        header->count++;
-        employees = realloc(employees, sizeof(struct employee) * header->count);
-        if (add_employee(header, employees, addstring) == STATUS_ERROR) {
+        if (add_employee(header, &employees, addstring) == STATUS_ERROR) {
             printf("Unable to add employee\n");
             close(fd);
             return STATUS_ERROR;

@@ -47,15 +47,20 @@ void list_employees(int count, struct employee *employees) {
     }
 }
 
-int add_employee(struct header *header, struct employee *employees, char *addstring) {
+int add_employee(struct header *header, struct employee **employees, char *addstring) {
+    header->count++;
+    struct employee *newEmployees = realloc(*employees, sizeof(struct employee) * header->count);
+
     char *name = strtok(addstring, ",");
     char *address = strtok(NULL, ",");
     char *hours = strtok(NULL, ",");
     int sub = header->count - 1;
 
-    strncpy(employees[sub].name, name, sizeof(employees[sub].name));
-    strncpy(employees[sub].address, address, sizeof(employees[sub].address));
-    employees[sub].hours = atoi(hours);
+    strncpy(newEmployees[sub].name, name, sizeof(newEmployees[sub].name));
+    strncpy(newEmployees[sub].address, address, sizeof(newEmployees[sub].address));
+    newEmployees[sub].hours = atoi(hours);
+
+    *employees = newEmployees;
 
     return STATUS_SUCCESS;
 }
