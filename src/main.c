@@ -66,18 +66,18 @@ int main(int argc, char *argv[]) {
 
     if (newfile) {
         if ((fd = create_file(filepath)) == STATUS_ERROR) {
-            printf("Unable to create database file\n");
+            printf("Creating database file failed\n");
             return STATUS_ERROR;
         }
 
         if (create_header(&header) == STATUS_ERROR) {
-            printf("Unable to create database file header\n");
+            printf("Creating database file header failed\n");
             close(fd);
             return STATUS_ERROR;
         }
     } else {
         if ((fd = open_file(filepath)) == STATUS_ERROR) {
-            printf("Unable to open database file\n");
+            printf("Opening database file failed\n");
             return STATUS_ERROR;
         }
 
@@ -89,22 +89,18 @@ int main(int argc, char *argv[]) {
     }
 
     if (read_employees(fd, header, &employees) == STATUS_ERROR) {
-        printf("Unable to read employees\n");
+        printf("Reading employees failed\n");
         close(fd);
         return STATUS_ERROR;
     }
 
     if (addstring) {
-        if (add_employee(header, &employees, addstring) == STATUS_ERROR) {
-            printf("Unable to add employee\n");
-            close(fd);
-            return STATUS_ERROR;
-        }
+        add_employee(header, &employees, addstring);
     }
 
     if (updstring) {
         if (update_employee(header, employees, updstring) == STATUS_ERROR) {
-            printf("Unable to update employee");
+            printf("Updating employee failed");
             close(fd);
             return STATUS_ERROR;
         }
@@ -115,7 +111,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (write_file(fd, header, employees) == STATUS_ERROR) {
-        printf("Unable to output data to database file\n");
+        printf("Writing to database file failed\n");
         close(fd);
         return STATUS_ERROR;
     }

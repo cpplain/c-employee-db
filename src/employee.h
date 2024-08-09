@@ -11,7 +11,7 @@ struct employee {
 
 int read_employees(int fd, struct header *header, struct employee **employeesOut);
 void list_employees(int count, struct employee *employees);
-int add_employee(struct header *header, struct employee **employees, char *addstring);
+void add_employee(struct header *header, struct employee **employees, char *addstring);
 int update_employee(struct header *header, struct employee *employees, char *updstring);
 
 #endif

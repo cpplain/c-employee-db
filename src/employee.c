@@ -47,7 +47,7 @@ void list_employees(int count, struct employee *employees) {
     }
 }
 
-int add_employee(struct header *header, struct employee **employees, char *addstring) {
+void add_employee(struct header *header, struct employee **employees, char *addstring) {
     header->count++;
     struct employee *newEmployees = realloc(*employees, sizeof(struct employee) * header->count);
 
@@ -61,8 +61,6 @@ int add_employee(struct header *header, struct employee **employees, char *addst
     newEmployees[sub].hours = atoi(hours);
 
     *employees = newEmployees;
-
-    return STATUS_SUCCESS;
 }
 
 int update_employee(struct header *header, struct employee *employees, char *updstring) {
@@ -75,8 +73,9 @@ int update_employee(struct header *header, struct employee *employees, char *upd
         if (strncmp(employees[i].name, name, sizeof(employees[i].name)) == 0) {
             strncpy(employees[i].address, address, sizeof(employees[i].address));
             employees[i].hours = atoi(hours);
+            return STATUS_SUCCESS;
         }
     }
 
-    return STATUS_SUCCESS;
+    return STATUS_ERROR;
 }
