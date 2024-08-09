@@ -9,11 +9,15 @@
 #include <unistd.h>
 
 void print_usage(char *argv[]) {
-    printf("usage: ./edb -f <database_file> [-n] [-l] [-a '<name>,<address>,<hours>']\n"
+    printf("usage: ./edb [-n] -f <database_file> [-l]\n"
+           "             [-a '<name>,<address>,<hours>']\n"
+           "             [-u '<name>,<address>,<hours>']\n"
+           "                                            \n"
            "       -f   path to database file (required)\n"
            "       -n   create new database file\n"
            "       -l   list all employees\n"
-           "       -a   add employee to database\n");
+           "       -a   add employee to database\n"
+           "       -u   update employee by name\n");
     return;
 }
 
@@ -21,22 +25,26 @@ int main(int argc, char *argv[]) {
     int ch;
     char *filepath = NULL;
     char *addstring = NULL;
+    char *updstring = NULL;
     bool newfile = false;
     bool list = false;
 
-    while ((ch = getopt(argc, argv, "f:nla:")) != -1) {
+    while ((ch = getopt(argc, argv, "nf:la:u:")) != -1) {
         switch (ch) {
-        case 'f':
-            filepath = optarg;
-            break;
         case 'n':
             newfile = true;
+            break;
+        case 'f':
+            filepath = optarg;
             break;
         case 'l':
             list = true;
             break;
         case 'a':
             addstring = optarg;
+            break;
+        case 'u':
+            updstring = optarg;
             break;
         case '?':
         default:
@@ -89,6 +97,14 @@ int main(int argc, char *argv[]) {
     if (addstring) {
         if (add_employee(header, &employees, addstring) == STATUS_ERROR) {
             printf("Unable to add employee\n");
+            close(fd);
+            return STATUS_ERROR;
+        }
+    }
+
+    if (updstring) {
+        if (update_employee(header, employees, updstring) == STATUS_ERROR) {
+            printf("Unable to update employee");
             close(fd);
             return STATUS_ERROR;
         }

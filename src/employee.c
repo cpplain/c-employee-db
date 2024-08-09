@@ -64,3 +64,19 @@ int add_employee(struct header *header, struct employee **employees, char *addst
 
     return STATUS_SUCCESS;
 }
+
+int update_employee(struct header *header, struct employee *employees, char *updstring) {
+    char *name = strtok(updstring, ",");
+    char *address = strtok(NULL, ",");
+    char *hours = strtok(NULL, ",");
+
+    int i;
+    for (i = 0; i < header->count; i++) {
+        if (strncmp(employees[i].name, name, sizeof(employees[i].name)) == 0) {
+            strncpy(employees[i].address, address, sizeof(employees[i].address));
+            employees[i].hours = atoi(hours);
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
