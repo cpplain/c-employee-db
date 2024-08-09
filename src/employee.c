@@ -2,6 +2,7 @@
 #include "common.h"
 #include "header.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,8 +43,12 @@ int read_employees(int fd, struct header *header, struct employee **employeesOut
 void list_employees(int count, struct employee *employees) {
     int i;
     for (i = 0; i < count; i++) {
-        printf("name: %s, address: %s, hours: %d\n", employees[i].name, employees[i].address,
-               employees[i].hours);
+        int num = i + 1;
+        printf("Employee %d\n"
+               "  Name: %s\n"
+               "  Address: %s\n"
+               "  Hours: %d\n",
+               num, employees[i].name, employees[i].address, employees[i].hours);
     }
 }
 
@@ -78,4 +83,28 @@ int update_employee(struct header *header, struct employee *employees, char *upd
     }
 
     return STATUS_ERROR;
+}
+
+int delete_employee(struct header *header, struct employee *employees, char *delstring) {
+    int i;
+    int count = header->count;
+    bool shift = false;
+    int status = STATUS_ERROR;
+
+    for (i = 0; i < count; i++) {
+        if (shift) {
+            strncpy(employees[i - 1].name, employees[i].name, sizeof(employees[i - 1].name));
+            strncpy(employees[i - 1].address, employees[i].address,
+                    sizeof(employees[i - 1].address));
+            employees[i - 1].hours = employees[i].hours;
+        }
+
+        if (strncmp(employees[i].name, delstring, sizeof(employees[i].name)) == 0) {
+            header->count--;
+            shift = true;
+            status = STATUS_SUCCESS;
+        }
+    }
+
+    return status;
 }

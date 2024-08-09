@@ -12,12 +12,14 @@ void print_usage(char *argv[]) {
     printf("usage: ./edb [-n] -f <database_file> [-l]\n"
            "             [-a '<name>,<address>,<hours>']\n"
            "             [-u '<name>,<address>,<hours>']\n"
+           "             [-d '<name>']\n"
            "                                            \n"
            "       -f   path to database file (required)\n"
            "       -n   create new database file\n"
            "       -l   list all employees\n"
            "       -a   add employee to database\n"
-           "       -u   update employee by name\n");
+           "       -u   update employee by name\n"
+           "       -d   delete employee by name\n");
     return;
 }
 
@@ -26,10 +28,11 @@ int main(int argc, char *argv[]) {
     char *filepath = NULL;
     char *addstring = NULL;
     char *updstring = NULL;
+    char *delstring = NULL;
     bool newfile = false;
     bool list = false;
 
-    while ((ch = getopt(argc, argv, "nf:la:u:")) != -1) {
+    while ((ch = getopt(argc, argv, "nf:la:u:d:")) != -1) {
         switch (ch) {
         case 'n':
             newfile = true;
@@ -46,9 +49,11 @@ int main(int argc, char *argv[]) {
         case 'u':
             updstring = optarg;
             break;
+        case 'd':
+            delstring = optarg;
+            break;
         case '?':
         default:
-            printf("Unknown option\n");
             print_usage(argv);
             return STATUS_ERROR;
         }
@@ -100,7 +105,15 @@ int main(int argc, char *argv[]) {
 
     if (updstring) {
         if (update_employee(header, employees, updstring) == STATUS_ERROR) {
-            printf("Updating employee failed");
+            printf("Updating employee failed\n");
+            close(fd);
+            return STATUS_ERROR;
+        }
+    }
+
+    if (delstring) {
+        if (delete_employee(header, employees, delstring) == STATUS_ERROR) {
+            printf("Deleting employee failed\n");
             close(fd);
             return STATUS_ERROR;
         }

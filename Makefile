@@ -19,9 +19,15 @@ $(dirs):
 .PHONY: test
 test: clean $(BIN) | temp
 	$(BIN) -n -f temp/test.db
-	$(BIN) -f temp/test.db -a "Johny Appleseed,1 Infinite Loop,80"
-	$(BIN) -f temp/test.db -l -a "John Smith,123 Main St,40"
-	$(BIN) -f temp/test.db -l -u "John Smith,1234 Main St,80"
+	$(BIN) -f temp/test.db -a "Frodo Baggins,123 Shire Ln,40"
+	$(BIN) -f temp/test.db -a "Samwise Gamgee,124 Shire Ln,40"
+	$(BIN) -f temp/test.db -a "Meriadoc Brandybuck,125 Shire Ln,40"
+	$(BIN) -f temp/test.db -a "Peregrin Took,126 Shire Ln,40"
+	$(BIN) -f temp/test.db -l
+	$(BIN) -f temp/test.db -u "Frodo Baggins,120 Shire Ln,50"
+	$(BIN) -f temp/test.db -l
+	$(BIN) -f temp/test.db -d "Samwise Gamgee"
+	$(BIN) -f temp/test.db -l
 
 .PHONY: clean
 clean:
