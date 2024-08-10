@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     bool newfile = false;
     bool list = false;
 
-    while ((ch = getopt(argc, argv, "nf:la:u:d:")) != -1) {
+    while ((ch = getopt(argc, argv, "nf:la:u:d:h")) != -1) {
         switch (ch) {
         case 'n':
             newfile = true;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         case 'd':
             delstring = optarg;
             break;
-        case '?':
+        case 'h' | '?':
         default:
             print_usage(argv);
             return STATUS_ERROR;
