@@ -1,5 +1,6 @@
 #include "file.h"
-#include "common.h"
+
+#include "../common.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>

@@ -1,7 +1,8 @@
-#include "common.h"
 #include "employee.h"
 #include "file.h"
 #include "header.h"
+
+#include "../common.h"
 
 #include <stdbool.h>
 #include <stdio.h>

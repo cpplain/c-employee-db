@@ -1,39 +1,29 @@
-dirs = bin obj temp
+BIN_DIR = bin
+BLD_DIR = build
+DB_DIR = db
+SRC_DIR = src
 
-BIN = bin/edb
-SRCS = $(wildcard src/*.c)
-OBJS = $(patsubst src/%.c, obj/%.o, $(SRCS))
+SRV_BIN = $(BIN_DIR)/dbsrv
+SRV_SRCS = $(wildcard src/*c) $(wildcard src/srv/*.c)
+SRV_OBJS = $(patsubst ${SRC_DIR}/%.c, ${BLD_DIR}/%.o, $(SRV_SRCS))
 
-.PHONY: all
-all: clean build
+default: clean build
 
-.PHONY: build
-build: $(BIN)
+build: $(SRV_BIN)
 
-$(BIN): $(OBJS) | bin
+$(SRV_BIN): $(SRV_OBJS)
+	mkdir -p bin
 	gcc -o $@ $?
 
-obj/%.o: src/%.c | obj
+$(BLD_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p build/srv
 	gcc -c -o $@ $<
 
-$(dirs):
-	mkdir -p $@
+run: $(SRV_BIN)
+	mkdir -p $(DB_DIR)
+	$(SRV_BIN) -n -f $(DB_DIR)/test.db
 
-.PHONY: test
-test: clean $(BIN) | temp
-	$(BIN) -n -f temp/test.db
-	$(BIN) -f temp/test.db -a "Frodo Baggins,123 Shire Ln,40"
-	$(BIN) -f temp/test.db -a "Samwise Gamgee,124 Shire Ln,40"
-	$(BIN) -f temp/test.db -a "Meriadoc Brandybuck,125 Shire Ln,40"
-	$(BIN) -f temp/test.db -a "Peregrin Took,126 Shire Ln,40"
-	$(BIN) -f temp/test.db -l
-	$(BIN) -f temp/test.db -u "Frodo Baggins,120 Shire Ln,50"
-	$(BIN) -f temp/test.db -l
-	$(BIN) -f temp/test.db -d "Samwise Gamgee"
-	$(BIN) -f temp/test.db -l
-
-.PHONY: clean
 clean:
-	rm -rf bin
-	rm -rf obj
-	rm -rf temp
+	rm -rf $(BIN_DIR) $(BLD_DIR) $(DB_DIR)
+
+.PHONY: build clean default run
