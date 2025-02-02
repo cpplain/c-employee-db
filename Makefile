@@ -1,22 +1,22 @@
-BIN_DIR = bin
-BLD_DIR = build
-DB_DIR = db
 SRC_DIR = src
+BLD_DIR = build
+BIN_DIR = bin
+DB_DIR = db
 
 SRV_BIN = $(BIN_DIR)/dbsrv
-SRV_SRCS = $(wildcard src/*c) $(wildcard src/srv/*.c)
-SRV_OBJS = $(patsubst ${SRC_DIR}/%.c, ${BLD_DIR}/%.o, $(SRV_SRCS))
+SRCS = $(wildcard $(SRC_DIR)/**/*.c)
+OBJS = $(patsubst ${SRC_DIR}/%.c, ${BLD_DIR}/%.o, $(SRCS))
 
 default: clean build
 
 build: $(SRV_BIN)
 
-$(SRV_BIN): $(SRV_OBJS)
-	mkdir -p bin
+$(SRV_BIN): $(OBJS)
+	mkdir -p $(BIN_DIR)
 	gcc -o $@ $?
 
 $(BLD_DIR)/%.o: $(SRC_DIR)/%.c
-	mkdir -p build/srv
+	mkdir -p $(BLD_DIR)/srv
 	gcc -c -o $@ $<
 
 run: $(SRV_BIN)
