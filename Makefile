@@ -21,7 +21,7 @@ $(BLD_DIR)/%.o: $(SRC_DIR)/%.c
 
 run: $(SRV_BIN)
 	mkdir -p $(DB_DIR)
-	$(SRV_BIN) -n -f $(DB_DIR)/test.db
+	$(SRV_BIN) -n -f $(DB_DIR)/test.db -p 8080
 
 clean:
 	rm -rf $(BIN_DIR) $(BLD_DIR) $(DB_DIR)
