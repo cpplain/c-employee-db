@@ -9,22 +9,22 @@
 #include <string.h>
 #include <unistd.h>
 
-int read_employees(int fd, struct header *header, struct employee **employeesOut) {
+int read_employees(int fd, header_t *header, employee_t **employeesOut) {
     int count = header->count;
 
-    struct employee *employees = calloc(count, sizeof(struct employee));
+    employee_t *employees = calloc(count, sizeof(employee_t));
     if (employees == NULL) {
         perror("calloc");
         return STATUS_ERROR;
     }
 
-    if (lseek(fd, sizeof(struct header), SEEK_SET) == -1) {
+    if (lseek(fd, sizeof(header_t), SEEK_SET) == -1) {
         perror("lseek");
         free(employees);
         return STATUS_ERROR;
     }
 
-    size_t size = sizeof(struct employee) * count;
+    size_t size = sizeof(employee_t) * count;
     if (read(fd, employees, size) != size) {
         perror("read");
         free(employees);
@@ -41,7 +41,7 @@ int read_employees(int fd, struct header *header, struct employee **employeesOut
     return STATUS_SUCCESS;
 }
 
-void list_employees(int count, struct employee *employees) {
+void list_employees(int count, employee_t *employees) {
     int i;
     for (i = 0; i < count; i++) {
         int num = i + 1;
@@ -53,9 +53,9 @@ void list_employees(int count, struct employee *employees) {
     }
 }
 
-void add_employee(struct header *header, struct employee **employees, char *addstring) {
+void add_employee(header_t *header, employee_t **employees, char *addstring) {
     header->count++;
-    struct employee *newEmployees = realloc(*employees, sizeof(struct employee) * header->count);
+    employee_t *newEmployees = realloc(*employees, sizeof(employee_t) * header->count);
 
     char *name = strtok(addstring, ",");
     char *address = strtok(NULL, ",");
@@ -69,7 +69,7 @@ void add_employee(struct header *header, struct employee **employees, char *adds
     *employees = newEmployees;
 }
 
-int update_employee(struct header *header, struct employee *employees, char *updstring) {
+int update_employee(header_t *header, employee_t *employees, char *updstring) {
     char *name = strtok(updstring, ",");
     char *address = strtok(NULL, ",");
     char *hours = strtok(NULL, ",");
@@ -86,7 +86,7 @@ int update_employee(struct header *header, struct employee *employees, char *upd
     return STATUS_ERROR;
 }
 
-int delete_employee(struct header *header, struct employee *employees, char *delstring) {
+int delete_employee(header_t *header, employee_t *employees, char *delstring) {
     int i;
     int count = header->count;
     bool shift = false;

@@ -6,6 +6,6 @@
 
 int create_file(char *filename);
 int open_file(char *filename);
-int write_file(int fd, struct header *header, struct employee *employees);
+int write_file(int fd, header_t *header, employee_t *employees);
 
 #endif

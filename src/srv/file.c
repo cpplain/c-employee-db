@@ -33,9 +33,9 @@ int open_file(char *filename) {
     return fd;
 }
 
-int write_file(int fd, struct header *header, struct employee *employees) {
+int write_file(int fd, header_t *header, employee_t *employees) {
     int count = header->count;
-    int filesize = sizeof(struct header) + (sizeof(struct employee) * count);
+    int filesize = sizeof(header_t) + (sizeof(employee_t) * count);
 
     header->magic = htonl(header->magic);
     header->version = htons(header->version);
@@ -52,7 +52,7 @@ int write_file(int fd, struct header *header, struct employee *employees) {
         return STATUS_ERROR;
     }
 
-    if (write(fd, header, sizeof(struct header)) < 0) {
+    if (write(fd, header, sizeof(header_t)) < 0) {
         perror("write");
         return STATUS_ERROR;
     }
@@ -60,7 +60,7 @@ int write_file(int fd, struct header *header, struct employee *employees) {
     int i;
     for (i = 0; i < count; i++) {
         employees[i].hours = htonl(employees[i].hours);
-        if (write(fd, &employees[i], sizeof(struct employee)) < 0) {
+        if (write(fd, &employees[i], sizeof(employee_t)) < 0) {
             perror("write");
             return STATUS_ERROR;
         }

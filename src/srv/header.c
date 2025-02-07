@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int create_header(struct header **headerOut) {
-    struct header *header = calloc(1, sizeof(struct header));
+int create_header(header_t **headerOut) {
+    header_t *header = calloc(1, sizeof(header_t));
     if (header == NULL) {
         perror("calloc");
         return STATUS_ERROR;
@@ -17,21 +17,21 @@ int create_header(struct header **headerOut) {
     header->magic = HEADER_MAGIC;
     header->version = DB_VERSION;
     header->count = 0;
-    header->filesize = sizeof(struct header);
+    header->filesize = sizeof(header_t);
 
     *headerOut = header;
 
     return STATUS_SUCCESS;
 }
 
-int validate_header(int fd, struct header **headerOut) {
-    struct header *header = calloc(1, sizeof(struct header));
+int validate_header(int fd, header_t **headerOut) {
+    header_t *header = calloc(1, sizeof(header_t));
     if (header == NULL) {
         perror("calloc");
         return STATUS_ERROR;
     }
 
-    if (read(fd, header, sizeof(struct header)) != sizeof(struct header)) {
+    if (read(fd, header, sizeof(header_t)) != sizeof(header_t)) {
         perror("read");
         free(header);
         return STATUS_ERROR;

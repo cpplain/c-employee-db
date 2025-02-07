@@ -4,14 +4,14 @@
 #define HEADER_MAGIC 0x4c4c4144
 #define DB_VERSION 0x1
 
-struct header {
+typedef struct {
     unsigned int magic;
     unsigned short version;
     unsigned short count;
     unsigned int filesize;
-};
+} header_t;
 
-int create_header(struct header **headerOut);
-int validate_header(int fd, struct header **headerOut);
+int create_header(header_t **headerOut);
+int validate_header(int fd, header_t **headerOut);
 
 #endif

@@ -3,16 +3,16 @@
 
 #include "header.h"
 
-struct employee {
+typedef struct {
     char name[256];
     char address[256];
     unsigned int hours;
-};
+} employee_t;
 
-int read_employees(int fd, struct header *header, struct employee **employeesOut);
-void list_employees(int count, struct employee *employees);
-void add_employee(struct header *header, struct employee **employees, char *addstring);
-int update_employee(struct header *header, struct employee *employees, char *updstring);
-int delete_employee(struct header *header, struct employee *employees, char *delstring);
+int read_employees(int fd, header_t *header, employee_t **employeesOut);
+void list_employees(int count, employee_t *employees);
+void add_employee(header_t *header, employee_t **employees, char *addstring);
+int update_employee(header_t *header, employee_t *employees, char *updstring);
+int delete_employee(header_t *header, employee_t *employees, char *delstring);
 
 #endif
