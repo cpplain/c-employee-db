@@ -1,81 +1,15 @@
 #include "employee.h"
 #include "file.h"
 #include "header.h"
+#include "server.h"
 
 #include "../common.h"
 
-#include <netinet/in.h>
-#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
-
-#define MAX_CLIENTS 256
-#define BACKLOG 16
-
-int start_server(unsigned int port) {
-    int listenfd;
-    if ((listenfd = socket(PF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("socket");
-        return -1;
-    }
-
-    int sockopt = 1;
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt)) == -1) {
-        perror("setsockopt");
-        return -1;
-    }
-
-    struct sockaddr_in serveraddr = {0};
-    // memset(&addr, 0, sizeof(addr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = INADDR_ANY;
-    serveraddr.sin_port = htons(port);
-
-    if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1) {
-        perror("bind");
-        return -1;
-    }
-
-    if (listen(listenfd, BACKLOG) == -1) {
-        perror("listen");
-        return -1;
-    }
-
-    printf("Server listening on port %d\n", port);
-
-    struct pollfd fds[MAX_CLIENTS + 1];
-    memset(&fds, 0, sizeof(fds));
-    fds[0].fd = listenfd;
-    fds[0].events = POLLIN;
-
-    int nfds = 1;
-
-    while (1) {
-        int ret;
-        if ((ret = poll(fds, nfds, -1) == -1)) {
-            perror("poll");
-            return -1;
-        }
-
-        // Handle new connections
-        if (fds[0].events & POLLIN) {
-            int connfd;
-            struct sockaddr_in clientaddr = {0};
-            socklen_t addrlen = sizeof(clientaddr);
-
-            if ((connfd = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen)) == -1) {
-                perror("accept");
-                continue;
-            }
-
-            close(connfd);
-        }
-    }
-}
 
 void print_usage(char *argv[]) {
     printf("usage: dbsrv [-n] -f <database_file> -p <port>\n"
