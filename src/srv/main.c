@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
         return STATUS_ERROR;
     }
 
-    if (start_server(port) == STATUS_ERROR) {
+    if (run_server(port) == STATUS_ERROR) {
         printf("Database server failed\n");
         close(fd);
         return STATUS_ERROR;

@@ -48,7 +48,7 @@ int find_slot_by_fd(client_state_t *states, int fd) {
     return STATUS_ERROR;
 }
 
-int start_server(unsigned int port) {
+int run_server(unsigned int port) {
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
     client_state_t states[MAX_CLIENTS] = {0};
     for (int i = 0; i < MAX_CLIENTS; i++) {
