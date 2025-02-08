@@ -11,12 +11,11 @@
 #include <string.h>
 #include <unistd.h>
 
-void print_usage(char *argv[]) {
+void print_usage() {
     printf("usage: dbsrv [-n] -f <database_file> -p <port>\n"
-           "\n"
            "       -n   create new database file\n"
            "       -f   path to database file (required)\n"
-           "       -p   port to listen on (required)\n");
+           "       -p   port to listen on (required)\n\n");
     return;
 }
 
@@ -39,20 +38,20 @@ int main(int argc, char *argv[]) {
             break;
         case 'h' | '?':
         default:
-            print_usage(argv);
+            print_usage();
             return STATUS_ERROR;
         }
     }
 
     if (filepath == NULL) {
         printf("Filepath is a required arguement\n");
-        print_usage(argv);
+        print_usage();
         return STATUS_ERROR;
     }
 
     if (port == 0) {
         printf("Valid port is a required arguement\n");
-        print_usage(argv);
+        print_usage();
         return STATUS_ERROR;
     }
 
