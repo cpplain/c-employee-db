@@ -65,7 +65,7 @@ int run_server(unsigned int port) {
     }
 
     int listenfd;
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         return STATUS_ERROR;
     }
