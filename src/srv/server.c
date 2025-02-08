@@ -28,7 +28,11 @@ typedef struct {
     int fd;
     connection_state_t state;
     char buffer[BUFF_SIZE];
+    char *addr;
+    unsigned short port;
 } client_state_t;
+
+char empty_str[] = {"\0"};
 
 int find_free_slot(client_state_t *states) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -56,6 +60,8 @@ int run_server(unsigned int port) {
         fds[i + 1].events = POLLIN;
         states[i].fd = -1;
         states[i].state = STATE_NEW;
+        states[i].addr = empty_str;
+        states[i].port = 0;
     }
 
     int listenfd;
@@ -110,17 +116,20 @@ int run_server(unsigned int port) {
                 continue;
             }
 
-            printf("New connection from %s:%d\n", inet_ntoa(clientaddr.sin_addr),
-                   ntohs(clientaddr.sin_port));
-
             int slot;
             if ((slot = find_free_slot(states)) == STATUS_ERROR) {
                 printf("Server full: closing new connection from %s:%d\n",
                        inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+
                 close(connfd);
             } else {
                 states[slot].fd = connfd;
                 states[slot].state = STATE_HELLO;
+                states[slot].addr = inet_ntoa(clientaddr.sin_addr);
+                states[slot].port = ntohs(clientaddr.sin_port);
+
+                printf("Accepted connection from %s:%d\n", states[slot].addr, states[slot].port);
+
                 nfds++;
             }
 
@@ -135,12 +144,19 @@ int run_server(unsigned int port) {
                 ssize_t bytes_read = read(fd, &states[slot].buffer, sizeof(states[slot].buffer));
 
                 if (bytes_read <= 0) {
+                    close(fd);
+
                     if (slot != -1) {
+                        printf("Closed connection from %s:%d\n", states[slot].addr,
+                               states[slot].port);
+
                         states[slot].fd = -1;
                         states[slot].state = STATE_DISCONNECTED;
+                        states[slot].addr = empty_str;
+                        states[slot].port = 0;
+
+                        nfds--;
                     }
-                    close(fd);
-                    nfds--;
                 } else {
                     printf("Handling the client connection");
                 }
