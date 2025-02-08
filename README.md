@@ -4,16 +4,24 @@ A file-based employee database written in C.
 
 ## Usage
 
-Build from source and run server:
+Build from source and test:
 
 ```shell
-make && make run
+make
+make run-srv
+make run-cli
 ```
 
 Print server options:
 
 ```shell
-bin/dbsrv -h
+build/bin/dbsrv -h
+```
+
+Print CLI options:
+
+```shell
+build/bin/dbcli -h
 ```
 
 ## Low Level Academy
