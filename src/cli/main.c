@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -46,8 +47,8 @@ int main(int argc, char *argv[]) {
         return STATUS_ERROR;
     }
 
-    int fd;
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
         perror("socket");
         return STATUS_ERROR;
     };
@@ -58,11 +59,22 @@ int main(int argc, char *argv[]) {
         .sin_port = port,
     };
 
-    if (connect(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1) {
+    if (connect(sock, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1) {
         perror("connect");
-        close(fd);
+        close(sock);
         return STATUS_ERROR;
     };
 
+    char buf[4096] = {0};
+    dbproto_hdr_t hdr = {
+        .ver = PROTO_VER,
+        .type = MSG_PROTO_VER,
+        .len = 0,
+    };
+    memcpy(buf, &hdr, sizeof(hdr));
+
+    write(sock, buf, sizeof(buf));
+
+    close(sock);
     return STATUS_SUCCESS;
 }

@@ -16,56 +16,35 @@
 #define BACKLOG 8
 
 typedef enum {
-    STATE_NEW,
-    STATE_CONNECTED,
     STATE_DISCONNECTED,
-    STATE_HELLO,
-    STATE_MSG,
-    STATE_GOODBYE,
+    STATE_CONNECTED,
 } connection_state_t;
 
 typedef struct {
     int fd;
     connection_state_t state;
     char buffer[BUFF_SIZE];
-    char *addr;
+    char addr[18];
     unsigned short port;
 } client_state_t;
 
-char empty_str[] = {"\0"};
-
-int find_free_slot(client_state_t *states) {
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (states[i].fd == -1) {
-            return i;
-        }
-    }
-    return STATUS_ERROR;
-}
-
-int find_slot_by_fd(client_state_t *states, int fd) {
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (states[i].fd == fd) {
-            return i;
-        }
-    }
-    return STATUS_ERROR;
-}
-
 int run_server(unsigned int port) {
+    // Initialize poll and client state structs
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
-    client_state_t states[MAX_CLIENTS] = {0};
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        fds[i + 1].fd = -1;
-        fds[i + 1].events = POLLIN;
-        states[i].fd = -1;
-        states[i].state = STATE_NEW;
-        states[i].addr = empty_str;
-        states[i].port = 0;
+    client_state_t clients[MAX_CLIENTS] = {0};
+
+    for (int i = 1; i < MAX_CLIENTS; i++) {
+        fds[i].fd = -1;
+        fds[i].events = POLLIN;
+
+        int j = i - 1;
+        clients[j].fd = -1;
+        clients[j].state = STATE_DISCONNECTED;
     }
 
-    int listenfd;
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    // Setup socket
+    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd == -1) {
         perror("socket");
         return STATUS_ERROR;
     }
@@ -98,9 +77,10 @@ int run_server(unsigned int port) {
     fds[0].events = POLLIN;
     int nfds = 1;
 
+    // Handle network requests
     while (1) {
-        int ret;
-        if ((ret = poll(fds, nfds, -1) == -1)) {
+        int nevents = poll(fds, nfds, -1);
+        if (nevents == -1) {
             perror("poll");
             return STATUS_ERROR;
         }
@@ -110,58 +90,94 @@ int run_server(unsigned int port) {
             struct sockaddr_in clientaddr;
             socklen_t addrlen = sizeof(clientaddr);
 
-            int connfd;
-            if ((connfd = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen)) == -1) {
+            int newfd = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
+            if (newfd == -1) {
                 perror("accept");
                 continue;
             }
 
-            int slot;
-            if ((slot = find_free_slot(states)) == STATUS_ERROR) {
+            // Assign client to slot in fds and clients
+            int slot = -1;
+            for (int i = 1; i <= MAX_CLIENTS; i++) {
+                if (fds[i].fd == -1) {
+                    slot = i;
+                    break;
+                }
+            }
+            if (slot < 0) {
                 printf("Server full: closing new connection from %s:%d\n",
                        inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-                close(connfd);
+                close(newfd);
             } else {
-                states[slot].fd = connfd;
-                states[slot].state = STATE_HELLO;
-                states[slot].addr = inet_ntoa(clientaddr.sin_addr);
-                states[slot].port = ntohs(clientaddr.sin_port);
+                fds[slot].fd = newfd;
 
-                printf("Accepted connection from %s:%d\n", states[slot].addr, states[slot].port);
+                int c_slot = slot - 1;
+                clients[c_slot].fd = newfd;
+                clients[c_slot].state = STATE_CONNECTED;
+                clients[c_slot].port = ntohs(clientaddr.sin_port);
+                strncpy(clients[c_slot].addr, inet_ntoa(clientaddr.sin_addr),
+                        sizeof(clients[c_slot].addr));
+
+                printf("Accepted connection from %s:%d\n", clients[c_slot].addr,
+                       clients[c_slot].port);
 
                 nfds++;
             }
 
-            ret--;
+            nevents--;
         }
 
-        // Check clients for events
-        for (int i = 1; i <= nfds && ret > 0; i++) {
+        // Check fds for events
+        for (int i = 1; i <= MAX_CLIENTS && nevents > 0; i++) {
             if (fds[i].revents & POLLIN) {
                 int fd = fds[i].fd;
-                int slot = find_slot_by_fd(states, fd);
-                ssize_t bytes_read = read(fd, &states[slot].buffer, sizeof(states[slot].buffer));
 
+                int j = i - 1;
+                ssize_t bytes_read = read(fd, clients[j].buffer, sizeof(clients[j].buffer));
+
+                // Handle client disconnection or connection error
                 if (bytes_read <= 0) {
                     close(fd);
+                    printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
 
-                    if (slot != -1) {
-                        printf("Closed connection from %s:%d\n", states[slot].addr,
-                               states[slot].port);
+                    fds[i].fd = -1;
 
-                        states[slot].fd = -1;
-                        states[slot].state = STATE_DISCONNECTED;
-                        states[slot].addr = empty_str;
-                        states[slot].port = 0;
+                    clients[j].fd = -1;
+                    clients[j].state = STATE_DISCONNECTED;
+                    clients[j].port = 0;
+                    strncpy(clients[j].addr, "\0", sizeof(clients[j].addr));
 
-                        nfds--;
-                    }
-                } else {
-                    printf("Handling the client connection");
+                    nfds--;
+                    nevents--;
+                    continue;
                 }
 
-                ret--;
+                // Handle client request
+                dbproto_hdr_t *hdr = (dbproto_hdr_t *)clients[j].buffer;
+
+                if (clients[j].state == STATE_CONNECTED) {
+                    if (hdr->ver != PROTO_VER) {
+                        // TODO: Send error
+
+                        close(fd);
+                        printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
+
+                        fds[i].fd = -1;
+
+                        clients[j].fd = -1;
+                        clients[j].state = STATE_DISCONNECTED;
+                        clients[j].port = 0;
+                        strncpy(clients[j].addr, "\0", sizeof(clients[j].addr));
+
+                        nfds--;
+                    } else if (hdr->type == MSG_PROTO_VER) {
+                        printf("Version sent by client: %d\n", hdr->ver);
+                        // TODO: Send success
+                    }
+                }
+
+                nevents--;
             }
         }
     }
