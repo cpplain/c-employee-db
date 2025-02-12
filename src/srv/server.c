@@ -28,29 +28,15 @@ typedef struct {
     unsigned short port;
 } client_state_t;
 
-int run_server(unsigned int port) {
-    // Initialize poll and client state structs
-    struct pollfd fds[MAX_CLIENTS + 1] = {0};
-    client_state_t clients[MAX_CLIENTS] = {0};
-
-    for (int i = 1; i < MAX_CLIENTS; i++) {
-        fds[i].fd = -1;
-        fds[i].events = POLLIN;
-
-        int j = i - 1;
-        clients[j].fd = -1;
-        clients[j].state = STATE_DISCONNECTED;
-    }
-
-    // Setup socket
-    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenfd == -1) {
+int setup_server_sock(unsigned int port) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd == -1) {
         perror("socket");
         return STATUS_ERROR;
     }
 
     int sockopt = 1;
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt)) == -1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt)) == -1) {
         perror("setsockopt");
         return STATUS_ERROR;
     }
@@ -61,23 +47,46 @@ int run_server(unsigned int port) {
         .sin_port = htons(port),
     };
 
-    if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1) {
+    if (bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1) {
         perror("bind");
         return STATUS_ERROR;
     }
 
-    if (listen(listenfd, BACKLOG) == -1) {
+    if (listen(fd, BACKLOG) == -1) {
         perror("listen");
         return STATUS_ERROR;
     }
 
     printf("Server listening on port %d\n", port);
 
+    return fd;
+}
+
+void unset_client_structs(struct pollfd fds[], client_state_t clients[], int slot) {
+    fds[slot].fd = -1;
+    fds[slot].events = POLLIN;
+
+    slot--;
+    clients[slot].fd = -1;
+    clients[slot].state = STATE_DISCONNECTED;
+    clients[slot].port = 0;
+    strncpy(clients[slot].addr, "\0", sizeof(clients[slot].addr));
+}
+
+int start_server(unsigned int port) {
+    struct pollfd fds[MAX_CLIENTS + 1] = {0};
+    client_state_t clients[MAX_CLIENTS] = {0};
+
+    for (int i = 1; i < MAX_CLIENTS; i++) {
+        unset_client_structs(fds, clients, i);
+    }
+
+    int listenfd = setup_server_sock(port);
     fds[0].fd = listenfd;
     fds[0].events = POLLIN;
     int nfds = 1;
 
-    // Handle network requests
+    // Poll for network events
     while (1) {
         int nevents = poll(fds, nfds, -1);
         if (nevents == -1) {
@@ -112,15 +121,14 @@ int run_server(unsigned int port) {
             } else {
                 fds[slot].fd = newfd;
 
-                int c_slot = slot - 1;
-                clients[c_slot].fd = newfd;
-                clients[c_slot].state = STATE_CONNECTED;
-                clients[c_slot].port = ntohs(clientaddr.sin_port);
-                strncpy(clients[c_slot].addr, inet_ntoa(clientaddr.sin_addr),
-                        sizeof(clients[c_slot].addr));
+                slot--;
+                clients[slot].fd = newfd;
+                clients[slot].state = STATE_CONNECTED;
+                clients[slot].port = ntohs(clientaddr.sin_port);
+                strncpy(clients[slot].addr, inet_ntoa(clientaddr.sin_addr),
+                        sizeof(clients[slot].addr));
 
-                printf("Accepted connection from %s:%d\n", clients[c_slot].addr,
-                       clients[c_slot].port);
+                printf("Accepted connection from %s:%d\n", clients[slot].addr, clients[slot].port);
 
                 nfds++;
             }
@@ -128,7 +136,7 @@ int run_server(unsigned int port) {
             nevents--;
         }
 
-        // Check fds for events
+        // Check pollfds for events
         for (int i = 1; i <= MAX_CLIENTS && nevents > 0; i++) {
             if (fds[i].revents & POLLIN) {
                 int fd = fds[i].fd;
@@ -141,12 +149,7 @@ int run_server(unsigned int port) {
                     close(fd);
                     printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
 
-                    fds[i].fd = -1;
-
-                    clients[j].fd = -1;
-                    clients[j].state = STATE_DISCONNECTED;
-                    clients[j].port = 0;
-                    strncpy(clients[j].addr, "\0", sizeof(clients[j].addr));
+                    unset_client_structs(fds, clients, i);
 
                     nfds--;
                     nevents--;
@@ -163,12 +166,7 @@ int run_server(unsigned int port) {
                         close(fd);
                         printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
 
-                        fds[i].fd = -1;
-
-                        clients[j].fd = -1;
-                        clients[j].state = STATE_DISCONNECTED;
-                        clients[j].port = 0;
-                        strncpy(clients[j].addr, "\0", sizeof(clients[j].addr));
+                        unset_client_structs(fds, clients, i);
 
                         nfds--;
                     } else if (hdr->type == MSG_PROTO_VER) {
