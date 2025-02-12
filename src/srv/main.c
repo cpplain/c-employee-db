@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
     employee_t *employees = NULL;
 
     if (newfile) {
-        if ((fd = create_file(filepath)) == STATUS_ERROR) {
+        fd = create_file(filepath);
+        if (fd == STATUS_ERROR) {
             printf("Creating database file failed\n");
             return STATUS_ERROR;
         }
@@ -71,7 +72,8 @@ int main(int argc, char *argv[]) {
             return STATUS_ERROR;
         }
     } else {
-        if ((fd = open_file(filepath)) == STATUS_ERROR) {
+        fd = open_file(filepath);
+        if (fd == STATUS_ERROR) {
             printf("Opening database file failed\n");
             return STATUS_ERROR;
         }

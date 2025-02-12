@@ -8,14 +8,15 @@
 #include <unistd.h>
 
 int create_file(char *filename) {
-    int fd = -1;
-    if ((fd = open(filename, O_RDONLY)) != -1) {
+    int fd = open(filename, O_RDONLY);
+    if (fd >= 0) {
         close(fd);
         printf("Database file already exists\n");
         return STATUS_ERROR;
     }
 
-    if ((fd = open(filename, O_RDWR | O_CREAT, 0644)) < 0) {
+    fd = open(filename, O_RDWR | O_CREAT, 0644);
+    if (fd < 0) {
         perror("open");
         return STATUS_ERROR;
     }
