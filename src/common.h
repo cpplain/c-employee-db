@@ -22,4 +22,8 @@ typedef struct {
     uint16_t len;
 } dbproto_hdr_t;
 
+typedef struct {
+    char msg[256];
+} dbproto_error_t;
+
 #endif

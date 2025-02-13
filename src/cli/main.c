@@ -66,14 +66,24 @@ int main(int argc, char *argv[]) {
     };
 
     char buf[4096] = {0};
-    dbproto_hdr_t hdr = {
-        .ver = PROTO_VER,
-        .type = MSG_PROTO_VER,
-        .len = 0,
-    };
-    memcpy(buf, &hdr, sizeof(hdr));
+    dbproto_hdr_t *hdr = (dbproto_hdr_t *)buf;
+    hdr->ver = PROTO_VER;
+    hdr->type = MSG_PROTO_VER;
+    hdr->len = 1;
 
     write(sock, buf, sizeof(buf));
+    read(sock, buf, sizeof(buf));
+
+    if (hdr->type == MSG_ERROR) {
+        if (hdr->len > 1) {
+            dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
+            printf("ERROR: %s\n", err->msg);
+        } else {
+            printf("ERROR: unknown server error\n");
+        }
+        close(sock);
+        return STATUS_ERROR;
+    }
 
     close(sock);
     return STATUS_SUCCESS;

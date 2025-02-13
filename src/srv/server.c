@@ -96,86 +96,99 @@ int start_server(unsigned int port) {
 
         // Handle new connections
         if (fds[0].revents & POLLIN) {
+            nevents--;
+
             struct sockaddr_in clientaddr;
             socklen_t addrlen = sizeof(clientaddr);
 
             int newfd = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
             if (newfd == -1) {
                 perror("accept");
-                continue;
-            }
+            } else {
+                // Assign client to slot in fds and clients
+                int slot = -1;
+                for (int i = 1; i <= MAX_CLIENTS; i++) {
+                    if (fds[i].fd == -1) {
+                        slot = i;
+                        break;
+                    }
+                }
 
-            // Assign client to slot in fds and clients
-            int slot = -1;
-            for (int i = 1; i <= MAX_CLIENTS; i++) {
-                if (fds[i].fd == -1) {
-                    slot = i;
-                    break;
+                if (slot < 0) {
+                    printf("Server full: closing connection %s:%d\n",
+                           inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+
+                    close(newfd);
+                } else {
+                    fds[slot].fd = newfd;
+
+                    slot--;
+                    clients[slot].fd = newfd;
+                    clients[slot].state = STATE_CONNECTED;
+                    clients[slot].port = ntohs(clientaddr.sin_port);
+                    strncpy(clients[slot].addr, inet_ntoa(clientaddr.sin_addr),
+                            sizeof(clients[slot].addr));
+
+                    printf("Accepted connection %s:%d\n", clients[slot].addr, clients[slot].port);
+
+                    nfds++;
                 }
             }
-            if (slot < 0) {
-                printf("Server full: closing new connection from %s:%d\n",
-                       inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
-
-                close(newfd);
-            } else {
-                fds[slot].fd = newfd;
-
-                slot--;
-                clients[slot].fd = newfd;
-                clients[slot].state = STATE_CONNECTED;
-                clients[slot].port = ntohs(clientaddr.sin_port);
-                strncpy(clients[slot].addr, inet_ntoa(clientaddr.sin_addr),
-                        sizeof(clients[slot].addr));
-
-                printf("Accepted connection from %s:%d\n", clients[slot].addr, clients[slot].port);
-
-                nfds++;
-            }
-
-            nevents--;
         }
 
         // Check pollfds for events
         for (int i = 1; i <= MAX_CLIENTS && nevents > 0; i++) {
             if (fds[i].revents & POLLIN) {
-                int fd = fds[i].fd;
+                nevents--;
 
+                int fd = fds[i].fd;
                 int j = i - 1;
                 ssize_t bytes_read = read(fd, clients[j].buffer, sizeof(clients[j].buffer));
 
                 // Handle client disconnection or connection error
                 if (bytes_read <= 0) {
-                    close(fd);
-                    printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
+                    printf("Client disconnected: closing connection %s:%d\n", clients[j].addr,
+                           clients[j].port);
 
+                    close(fd);
                     unset_client_structs(fds, clients, i);
 
                     nfds--;
-                    nevents--;
                     continue;
                 }
 
                 // Handle client request
                 dbproto_hdr_t *hdr = (dbproto_hdr_t *)clients[j].buffer;
 
-                if (clients[j].state == STATE_CONNECTED) {
-                    if (hdr->ver != PROTO_VER) {
-                        // TODO: Send error
+                // Handle incorrect protocol version from client
+                if (hdr->ver != PROTO_VER) {
+                    printf("Incorrect protocol version: closing connection %s:%d\n",
+                           clients[j].addr, clients[j].port);
 
-                        close(fd);
-                        printf("Closed connection from %s:%d\n", clients[j].addr, clients[j].port);
+                    hdr->ver = 1;
+                    hdr->type = MSG_ERROR;
+                    hdr->len = 2;
 
-                        unset_client_structs(fds, clients, i);
+                    dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
+                    strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
 
-                        nfds--;
-                    } else if (hdr->type == MSG_PROTO_VER) {
-                        printf("Version sent by client: %d\n", hdr->ver);
-                        // TODO: Send success
-                    }
+                    write(fd, clients[j].buffer, sizeof(clients[j].buffer));
+                    close(fd);
+                    unset_client_structs(fds, clients, i);
+
+                    nfds--;
+                    continue;
                 }
 
-                nevents--;
+                // Handle protocol request from client
+                if (hdr->type == MSG_PROTO_VER) {
+                    hdr->ver = 1;
+                    hdr->type = MSG_PROTO_VER;
+                    hdr->len = 1;
+
+                    write(fd, clients[j].buffer, sizeof(clients[j].buffer));
+                    continue;
+                }
             }
         }
     }
