@@ -7,9 +7,9 @@
 #define STATUS_SUCCESS 0
 
 #define PROTO_VER 1
+#define BUF_SIZE 4096
 
 typedef enum {
-    MSG_PROTO_VER,
     MSG_EMPLOYEE_LIST,
     MSG_EMPLOYEE_ADD,
     MSG_EMPLOYEE_DEL,

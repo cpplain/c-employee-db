@@ -68,13 +68,16 @@ int main(int argc, char *argv[]) {
     char buf[4096] = {0};
     dbproto_hdr_t *hdr = (dbproto_hdr_t *)buf;
     hdr->ver = PROTO_VER;
-    hdr->type = MSG_PROTO_VER;
-    hdr->len = 1;
+    hdr->type = MSG_EMPLOYEE_ADD;
+    hdr->len = 2;
+
+    // TODO: send employee properties
 
     write(sock, buf, sizeof(buf));
     read(sock, buf, sizeof(buf));
 
-    if (hdr->type == MSG_ERROR) {
+    switch (hdr->type) {
+    case MSG_ERROR:
         if (hdr->len > 1) {
             dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
             printf("ERROR: %s\n", err->msg);
@@ -83,6 +86,8 @@ int main(int argc, char *argv[]) {
         }
         close(sock);
         return STATUS_ERROR;
+    default:
+        break;
     }
 
     close(sock);
