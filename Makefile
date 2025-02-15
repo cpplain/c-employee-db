@@ -27,7 +27,7 @@ build-cli: $(CLI_BIN)
 build-srv: $(SRV_BIN)
 
 run-cli: $(CLI_BIN)
-	$(CLI_BIN) -a $(ADDR) -p $(PORT)
+	$(CLI_BIN) -a $(ADDR) -p $(PORT) -n "Frodo Baggins,Bag End,40"
 
 run-srv: $(SRV_BIN)
 	mkdir -p $(DB_DIR)

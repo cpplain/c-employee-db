@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     int ch;
     bool newfile = false;
     char *filepath = NULL;
-    unsigned short port = 0;
+    in_port_t port = 0;
 
     while ((ch = getopt(argc, argv, "nf:p:h")) != -1) {
         switch (ch) {
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
         return STATUS_ERROR;
     }
 
-    if (start_server(port) == STATUS_ERROR) {
+    if (start_server(port, header, employees) == STATUS_ERROR) {
         printf("Database server failed\n");
         close(fd);
         return STATUS_ERROR;

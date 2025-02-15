@@ -22,7 +22,7 @@ void reset_state(struct pollfd *fd, buffer *buf) {
     memset(buf, 0, sizeof(buffer));
 }
 
-int init_server_sock(unsigned int port) {
+int init_sock(in_port_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
         perror("socket");
@@ -56,16 +56,29 @@ int init_server_sock(unsigned int port) {
     return fd;
 }
 
-int free_slot(struct pollfd fds[]) {
+int accept_new(int newfd, struct pollfd *fds) {
     for (int i = 1; i <= MAX_CLIENTS; i++) {
         if (fds[i].fd == -1) {
-            return i;
+            fds[i].fd = newfd;
+            return STATUS_SUCCESS;
         }
     }
     return STATUS_ERROR;
 }
 
-int start_server(unsigned int port) {
+void hdr_ntoh(dbproto_hdr_t *hdr) {
+    hdr->ver = ntohs(hdr->ver);
+    hdr->type = ntohs(hdr->type);
+    hdr->len = ntohs(hdr->len);
+}
+
+void hdr_hton(dbproto_hdr_t *hdr) {
+    hdr->ver = htons(hdr->ver);
+    hdr->type = htons(hdr->type);
+    hdr->len = htons(hdr->len);
+}
+
+int start_server(in_port_t port, header_t *header, employee_t *employees) {
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
     buffers buffers = {0};
 
@@ -73,7 +86,7 @@ int start_server(unsigned int port) {
         reset_state(&fds[i], &buffers[i]);
     }
 
-    int listenfd = init_server_sock(port);
+    int listenfd = init_sock(port);
     fds[0].fd = listenfd;
     fds[0].events = POLLIN;
     int nfds = 1;
@@ -88,91 +101,91 @@ int start_server(unsigned int port) {
 
         // Handle new connections
         if (fds[0].revents & POLLIN) {
-            struct sockaddr_in clientaddr;
-            socklen_t addrlen = sizeof(clientaddr);
+            nevents--;
 
-            // Assign client to pollfds
-            int newfd = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
+            struct sockaddr_in addr;
+            socklen_t addrlen = sizeof(addr);
+
+            int newfd = accept(listenfd, (struct sockaddr *)&addr, &addrlen);
             if (newfd == -1) {
                 perror("accept");
             } else {
-                int slot = free_slot(fds);
-                if (slot < 0) {
-                    printf("Server full: closing connection %s:%d\n",
-                           inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
-
+                if (accept_new(newfd, fds) == STATUS_ERROR) {
+                    printf("Server full: closing connection %s:%d\n", inet_ntoa(addr.sin_addr),
+                           ntohs(addr.sin_port));
                     close(newfd);
                 } else {
-                    printf("New connection %s:%d\n", inet_ntoa(clientaddr.sin_addr),
-                           ntohs(clientaddr.sin_port));
-                    fds[slot].fd = newfd;
-
+                    printf("New connection %s:%d\n", inet_ntoa(addr.sin_addr),
+                           ntohs(addr.sin_port));
                     nfds++;
                 }
             }
-
-            nevents--;
         }
 
-        // Check pollfds for events
+        // Handle poll events
         for (int i = 1; i <= MAX_CLIENTS && nevents > 0; i++) {
             if (fds[i].revents & POLLIN) {
+                nevents--;
+
                 int fd = fds[i].fd;
-                ssize_t bytes_read = read(fd, buffers[i], sizeof(buffer));
+                ssize_t bytes_read = read(fd, &buffers[i], sizeof(buffer));
 
-                struct sockaddr_in clientaddr;
-                socklen_t addrlen = sizeof(clientaddr);
-                getpeername(fd, (struct sockaddr *)&clientaddr, &addrlen);
-
-                // Handle client request
+                // Handle disconnect
                 if (bytes_read <= 0) {
+                    struct sockaddr_in addr;
+                    socklen_t addrlen = sizeof(addr);
+                    getpeername(fd, (struct sockaddr *)&addr, &addrlen);
+
                     printf("Client disconnected: closing connection %s:%d\n",
-                           inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+                           inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
                     close(fd);
                     reset_state(&fds[i], &buffers[i]);
 
                     nfds--;
-                } else {
-                    dbproto_hdr_t *hdr = (dbproto_hdr_t *)buffers[i];
-                    hdr->ver = ntohs(hdr->ver);
-                    hdr->type = ntohs(hdr->type);
-                    hdr->len = ntohs(hdr->len);
-
-                    if (hdr->ver != PROTO_VER) {
-                        printf("Incorrect protocol version: closing connection %s:%d\n",
-                               inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
-
-                        hdr->ver = htons(PROTO_VER);
-                        hdr->type = htons(MSG_ERROR);
-                        hdr->len = htons(2);
-
-                        dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
-                        strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
-
-                        write(fd, buffers[i], sizeof(buffer));
-                        close(fd);
-                        reset_state(&fds[i], &buffers[i]);
-
-                        nfds--;
-                    } else {
-                        switch (hdr->type) {
-                        case MSG_EMPLOYEE_ADD:
-                            hdr->ver = htons(PROTO_VER);
-                            hdr->type = htons(MSG_EMPLOYEE_ADD);
-                            hdr->len = htons(2);
-
-                            // TODO: return status
-
-                            write(fd, buffers[i], sizeof(buffer));
-                            break;
-                        default:
-                            break;
-                        }
-                    }
+                    continue;
                 }
 
-                nevents--;
+                dbproto_hdr_t *hdr = (dbproto_hdr_t *)buffers[i];
+                hdr_ntoh(hdr);
+
+                if (hdr->ver != PROTO_VER) {
+                    struct sockaddr_in addr;
+                    socklen_t addrlen = sizeof(addr);
+                    getpeername(fd, (struct sockaddr *)&addr, &addrlen);
+                    printf("Incorrect protocol version: closing connection %s:%d\n",
+                           inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+                    hdr->ver = PROTO_VER;
+                    hdr->type = MSG_ERROR;
+                    hdr->len = 2;
+                    hdr_hton(hdr);
+
+                    dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
+                    strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
+
+                    write(fd, buffers[i], sizeof(buffer));
+                    close(fd);
+                    reset_state(&fds[i], &buffers[i]);
+
+                    nfds--;
+                    continue;
+                }
+
+                if (hdr->type == MSG_EMPLOYEE_ADD) {
+                    dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
+                    add_employee(header, &employees, employee->data);
+
+                    hdr->ver = PROTO_VER;
+                    hdr->type = MSG_EMPLOYEE_ADD;
+                    hdr->len = 1;
+                    hdr_hton(hdr);
+
+                    // TODO: send status and/or employee struct
+
+                    write(fd, buffers[i], sizeof(buffer));
+                    continue;
+                }
             }
         }
     }

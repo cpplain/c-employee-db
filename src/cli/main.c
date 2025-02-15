@@ -10,8 +10,12 @@
 
 void print_usage() {
     printf("usage: dbcli -a <address> -p <port>\n"
+           "            [-n '<name>,<address>,<hours>']\n"
+           "\n"
            "       -a   server address (required)\n"
-           "       -p   server port (required)\n\n");
+           "       -p   server port (required)\n"
+           "       -n   new employee\n"
+           "\n");
     return;
 }
 
@@ -19,14 +23,18 @@ int main(int argc, char *argv[]) {
     int ch;
     in_addr_t addr = 0;
     in_port_t port = 0;
+    char *newemp = NULL;
 
-    while ((ch = getopt(argc, argv, "a:p:h")) != -1) {
+    while ((ch = getopt(argc, argv, "a:p:n:h")) != -1) {
         switch (ch) {
         case 'a':
             addr = inet_addr(optarg);
             break;
         case 'p':
             port = htons(atoi(optarg));
+            break;
+        case 'n':
+            newemp = optarg;
             break;
         case 'h' | '?':
         default:
@@ -70,6 +78,9 @@ int main(int argc, char *argv[]) {
     hdr->ver = htons(PROTO_VER);
     hdr->type = htons(MSG_EMPLOYEE_ADD);
     hdr->len = htons(2);
+
+    dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
+    strncpy(employee->data, newemp, sizeof(dbproto_employee_t));
 
     // TODO: send employee properties
 

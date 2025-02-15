@@ -26,4 +26,8 @@ typedef struct {
     char msg[256];
 } dbproto_error_t;
 
+typedef struct {
+    char data[1024];
+} dbproto_employee_t;
+
 #endif
