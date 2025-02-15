@@ -30,4 +30,4 @@ build/bin/dbcli -h
 
 ## Acknowledgments
 
-Thanks to [Low Level Academy](https://lowlevel.academy) for providing most of the learning material used as for this project.
+Thanks to [Low Level Academy](https://lowlevel.academy) for providing most of the learning material used for this project.
