@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     int ch;
     in_addr_t addr = 0;
     in_port_t port = 0;
-    char *newemp = NULL;
+    char *newstr = NULL;
 
     while ((ch = getopt(argc, argv, "a:p:n:h")) != -1) {
         switch (ch) {
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
             port = htons(atoi(optarg));
             break;
         case 'n':
-            newemp = optarg;
+            newstr = optarg;
             break;
         case 'h' | '?':
         default:
@@ -75,23 +75,22 @@ int main(int argc, char *argv[]) {
 
     char buf[4096] = {0};
     dbproto_hdr_t *hdr = (dbproto_hdr_t *)buf;
-    hdr->ver = PROTO_VER;
-    hdr->type = MSG_EMPLOYEE_ADD;
-    hdr->len = 2;
-    dbproto_hdr_hton(hdr);
 
-    dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
-    strncpy(employee->data, newemp, sizeof(dbproto_employee_t));
+    if (newstr != NULL) {
+        hdr->ver = PROTO_VER;
+        hdr->type = MSG_EMPLOYEE_ADD;
+        hdr->len = 2;
+        dbproto_hdr_hton(hdr);
 
-    // TODO: send employee properties
+        dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
+        strncpy(employee->data, newstr, sizeof(dbproto_employee_t));
+    }
 
     write(sock, buf, sizeof(buf));
     read(sock, buf, sizeof(buf));
-
     dbproto_hdr_ntoh(hdr);
 
-    switch (hdr->type) {
-    case MSG_ERROR:
+    if (hdr->type == MSG_ERROR) {
         if (hdr->len > 1) {
             dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
             printf("ERROR: %s\n", err->msg);
@@ -100,8 +99,6 @@ int main(int argc, char *argv[]) {
         }
         close(sock);
         return STATUS_ERROR;
-    default:
-        break;
     }
 
     close(sock);
