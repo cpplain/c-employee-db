@@ -2,6 +2,10 @@
 
 A file-based employee database written in C.
 
+## Purpose
+
+The main purpose of this project is to gain a deeper understanding of programming using the C programming language. It is not meant to be production ready.
+
 ## Usage
 
 Build from source and test:
@@ -24,6 +28,6 @@ Print CLI options:
 build/bin/dbcli -h
 ```
 
-## Low Level Academy
+## Acknowledgments
 
-Learn C at [Low Level Academy](https://lowlevel.academy).
+Thanks to [Low Level Academy](https://lowlevel.academy) for providing most of the learning material used as for this project.
