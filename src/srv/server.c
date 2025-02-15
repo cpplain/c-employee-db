@@ -135,14 +135,17 @@ int start_server(unsigned int port) {
                     nfds--;
                 } else {
                     dbproto_hdr_t *hdr = (dbproto_hdr_t *)buffers[i];
+                    hdr->ver = ntohs(hdr->ver);
+                    hdr->type = ntohs(hdr->type);
+                    hdr->len = ntohs(hdr->len);
 
                     if (hdr->ver != PROTO_VER) {
                         printf("Incorrect protocol version: closing connection %s:%d\n",
                                inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-                        hdr->ver = PROTO_VER;
-                        hdr->type = MSG_ERROR;
-                        hdr->len = 2;
+                        hdr->ver = htons(PROTO_VER);
+                        hdr->type = htons(MSG_ERROR);
+                        hdr->len = htons(2);
 
                         dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
                         strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
@@ -155,9 +158,9 @@ int start_server(unsigned int port) {
                     } else {
                         switch (hdr->type) {
                         case MSG_EMPLOYEE_ADD:
-                            hdr->ver = PROTO_VER;
-                            hdr->type = MSG_EMPLOYEE_ADD;
-                            hdr->len = 2;
+                            hdr->ver = htons(PROTO_VER);
+                            hdr->type = htons(MSG_EMPLOYEE_ADD);
+                            hdr->len = htons(2);
 
                             // TODO: return status
 

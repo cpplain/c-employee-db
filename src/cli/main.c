@@ -67,14 +67,18 @@ int main(int argc, char *argv[]) {
 
     char buf[4096] = {0};
     dbproto_hdr_t *hdr = (dbproto_hdr_t *)buf;
-    hdr->ver = PROTO_VER;
-    hdr->type = MSG_EMPLOYEE_ADD;
-    hdr->len = 2;
+    hdr->ver = htons(PROTO_VER);
+    hdr->type = htons(MSG_EMPLOYEE_ADD);
+    hdr->len = htons(2);
 
     // TODO: send employee properties
 
     write(sock, buf, sizeof(buf));
     read(sock, buf, sizeof(buf));
+
+    hdr->ver = ntohs(hdr->ver);
+    hdr->type = ntohs(hdr->type);
+    hdr->len = ntohs(hdr->len);
 
     switch (hdr->type) {
     case MSG_ERROR:
