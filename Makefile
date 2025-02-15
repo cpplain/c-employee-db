@@ -6,13 +6,13 @@ DB_DIR := db
 CLI_BIN := $(BIN_DIR)/dbcli
 CLI_SRC_DIR := $(SRC_DIR)/cli
 CLI_BLD_DIR := $(BLD_DIR)/cli
-CLI_SRCS := $(wildcard $(CLI_SRC_DIR)/*.c)
+CLI_SRCS := $(wildcard $(CLI_SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.c)
 CLI_OBJS := $(patsubst ${SRC_DIR}/%.c, ${BLD_DIR}/%.o, $(CLI_SRCS))
 
 SRV_BIN := $(BIN_DIR)/dbsrv
 SRV_SRC_DIR := $(SRC_DIR)/srv
 SRV_BLD_DIR := $(BLD_DIR)/srv
-SRV_SRCS := $(wildcard $(SRV_SRC_DIR)/*.c)
+SRV_SRCS := $(wildcard $(SRV_SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.c)
 SRV_OBJS := $(patsubst ${SRC_DIR}/%.c, ${BLD_DIR}/%.o, $(SRV_SRCS))
 
 ADDR := 127.0.0.1

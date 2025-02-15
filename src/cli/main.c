@@ -75,9 +75,10 @@ int main(int argc, char *argv[]) {
 
     char buf[4096] = {0};
     dbproto_hdr_t *hdr = (dbproto_hdr_t *)buf;
-    hdr->ver = htons(PROTO_VER);
-    hdr->type = htons(MSG_EMPLOYEE_ADD);
-    hdr->len = htons(2);
+    hdr->ver = PROTO_VER;
+    hdr->type = MSG_EMPLOYEE_ADD;
+    hdr->len = 2;
+    dbproto_hdr_hton(hdr);
 
     dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
     strncpy(employee->data, newemp, sizeof(dbproto_employee_t));
@@ -87,9 +88,7 @@ int main(int argc, char *argv[]) {
     write(sock, buf, sizeof(buf));
     read(sock, buf, sizeof(buf));
 
-    hdr->ver = ntohs(hdr->ver);
-    hdr->type = ntohs(hdr->type);
-    hdr->len = ntohs(hdr->len);
+    dbproto_hdr_ntoh(hdr);
 
     switch (hdr->type) {
     case MSG_ERROR:

@@ -66,18 +66,6 @@ int accept_new(int newfd, struct pollfd *fds) {
     return STATUS_ERROR;
 }
 
-void hdr_ntoh(dbproto_hdr_t *hdr) {
-    hdr->ver = ntohs(hdr->ver);
-    hdr->type = ntohs(hdr->type);
-    hdr->len = ntohs(hdr->len);
-}
-
-void hdr_hton(dbproto_hdr_t *hdr) {
-    hdr->ver = htons(hdr->ver);
-    hdr->type = htons(hdr->type);
-    hdr->len = htons(hdr->len);
-}
-
 int start_server(in_port_t port, header_t *header, employee_t *employees) {
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
     buffers buffers = {0};
@@ -147,7 +135,7 @@ int start_server(in_port_t port, header_t *header, employee_t *employees) {
                 }
 
                 dbproto_hdr_t *hdr = (dbproto_hdr_t *)buffers[i];
-                hdr_ntoh(hdr);
+                dbproto_hdr_ntoh(hdr);
 
                 if (hdr->ver != PROTO_VER) {
                     struct sockaddr_in addr;
@@ -159,7 +147,7 @@ int start_server(in_port_t port, header_t *header, employee_t *employees) {
                     hdr->ver = PROTO_VER;
                     hdr->type = MSG_ERROR;
                     hdr->len = 2;
-                    hdr_hton(hdr);
+                    dbproto_hdr_hton(hdr);
 
                     dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
                     strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
@@ -179,7 +167,7 @@ int start_server(in_port_t port, header_t *header, employee_t *employees) {
                     hdr->ver = PROTO_VER;
                     hdr->type = MSG_EMPLOYEE_ADD;
                     hdr->len = 1;
-                    hdr_hton(hdr);
+                    dbproto_hdr_hton(hdr);
 
                     // TODO: send status and/or employee struct
 

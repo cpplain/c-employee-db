@@ -30,4 +30,8 @@ typedef struct {
     char data[1024];
 } dbproto_employee_t;
 
+void dbproto_hdr_hton(dbproto_hdr_t *hdr);
+
+void dbproto_hdr_ntoh(dbproto_hdr_t *hdr);
+
 #endif
