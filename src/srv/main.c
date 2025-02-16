@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
         return STATUS_ERROR;
     }
 
-    if (start_server(port, header, employees) == STATUS_ERROR) {
+    if (start_server(port, fd, header, employees) == STATUS_ERROR) {
         printf("Database server failed\n");
         close(fd);
         return STATUS_ERROR;

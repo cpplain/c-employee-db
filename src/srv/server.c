@@ -1,4 +1,5 @@
 #include "server.h"
+#include "file.h"
 
 #include "../common.h"
 
@@ -66,7 +67,7 @@ int accept_new(int newfd, struct pollfd *fds) {
     return STATUS_ERROR;
 }
 
-int start_server(in_port_t port, header_t *header, employee_t *employees) {
+int start_server(in_port_t port, int dbfd, header_t *header, employee_t *employees) {
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
     buffers buffers = {0};
 
@@ -163,13 +164,12 @@ int start_server(in_port_t port, header_t *header, employee_t *employees) {
                 if (hdr->type == MSG_EMPLOYEE_ADD) {
                     dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
                     add_employee(header, &employees, employee->data);
+                    write_file(dbfd, header, employees);
 
                     hdr->ver = PROTO_VER;
                     hdr->type = MSG_EMPLOYEE_ADD;
                     hdr->len = 1;
                     dbproto_hdr_hton(hdr);
-
-                    // TODO: send status and/or employee struct
 
                     write(fd, buffers[i], sizeof(buffer));
                     continue;
