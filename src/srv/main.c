@@ -60,16 +60,33 @@ int main(int argc, char *argv[]) {
     employee_t *employees = NULL;
 
     if (newfile) {
-        fd = create_file(filepath);
-        if (fd == STATUS_ERROR) {
-            printf("Creating database file failed\n");
-            return STATUS_ERROR;
-        }
+        fd = open_file(filepath);
+        if (fd >= 0) {
+            printf("Database file already exists\n");
 
-        if (create_header(&header) == STATUS_ERROR) {
-            printf("Creating database file header failed\n");
-            close(fd);
-            return STATUS_ERROR;
+            if (validate_header(fd, &header) == STATUS_ERROR) {
+                printf("Databse file is not valid\n");
+                close(fd);
+                return STATUS_ERROR;
+            }
+        } else {
+            fd = create_file(filepath);
+            if (fd == STATUS_ERROR) {
+                printf("Creating database file failed\n");
+                return STATUS_ERROR;
+            }
+
+            if (create_header(&header) == STATUS_ERROR) {
+                printf("Creating database file header failed\n");
+                close(fd);
+                return STATUS_ERROR;
+            }
+
+            if (write_file(fd, header, employees) == STATUS_ERROR) {
+                printf("Writing to database file failed\n");
+                close(fd);
+                return STATUS_ERROR;
+            }
         }
     } else {
         fd = open_file(filepath);
@@ -93,12 +110,6 @@ int main(int argc, char *argv[]) {
 
     if (start_server(port, fd, header, employees) == STATUS_ERROR) {
         printf("Database server failed\n");
-        close(fd);
-        return STATUS_ERROR;
-    }
-
-    if (write_file(fd, header, employees) == STATUS_ERROR) {
-        printf("Writing to database file failed\n");
         close(fd);
         return STATUS_ERROR;
     }
