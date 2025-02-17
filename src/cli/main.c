@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 void print_usage() {
-    printf("usage: dbcli -a <address> -p <port>\n"
+    printf("usage: dbcli -a <address> -p <port> [-l]\n"
            "            [-n '<name>,<address>,<hours>']\n"
            "\n"
            "       -a   server address (required)\n"
@@ -24,8 +24,9 @@ int main(int argc, char *argv[]) {
     in_addr_t addr = 0;
     in_port_t port = 0;
     char *newstr = NULL;
+    int list = 0;
 
-    while ((ch = getopt(argc, argv, "a:p:n:h")) != -1) {
+    while ((ch = getopt(argc, argv, "a:p:n:lh")) != -1) {
         switch (ch) {
         case 'a':
             addr = inet_addr(optarg);
@@ -35,6 +36,9 @@ int main(int argc, char *argv[]) {
             break;
         case 'n':
             newstr = optarg;
+            break;
+        case 'l':
+            list = 1;
             break;
         case 'h' | '?':
         default:
@@ -79,11 +83,18 @@ int main(int argc, char *argv[]) {
     if (newstr != NULL) {
         hdr->ver = PROTO_VER;
         hdr->type = MSG_EMPLOYEE_ADD;
-        hdr->len = 2;
+        hdr->len = 1;
         dbproto_hdr_hton(hdr);
 
-        dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
-        strncpy(employee->data, newstr, sizeof(dbproto_employee_t));
+        dbproto_employee_add_t *employee = (dbproto_employee_add_t *)&hdr[1];
+        strncpy(employee->data, newstr, sizeof(dbproto_employee_add_t));
+    }
+
+    if (list == 1) {
+        hdr->ver = PROTO_VER;
+        hdr->type = MSG_EMPLOYEE_LIST;
+        hdr->len = 0;
+        dbproto_hdr_hton(hdr);
     }
 
     write(sock, buf, sizeof(buf));
@@ -91,7 +102,7 @@ int main(int argc, char *argv[]) {
     dbproto_hdr_ntoh(hdr);
 
     if (hdr->type == MSG_ERROR) {
-        if (hdr->len > 1) {
+        if (hdr->len > 0) {
             dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
             printf("ERROR: %s\n", err->msg);
         } else {
@@ -99,6 +110,18 @@ int main(int argc, char *argv[]) {
         }
         close(sock);
         return STATUS_ERROR;
+    }
+
+    if (hdr->type == MSG_EMPLOYEE_LIST) {
+        dbproto_employee_list_t *list = (dbproto_employee_list_t *)&hdr[1];
+        printf("Employees:\n"
+               "    No. Name, Address, Hours\n"
+               "    ------------------------\n");
+        for (int i = 0; i < hdr->len; i++) {
+            printf("    %d. %s, %s, %d\n", i + 1, list[i].name, list[i].address,
+                   ntohs(list[i].hours));
+        }
+        printf("\n");
     }
 
     close(sock);

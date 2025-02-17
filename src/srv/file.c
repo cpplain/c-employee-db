@@ -33,7 +33,7 @@ int write_file(int fd, header_t *header, employee_t *employees) {
 
     header->magic = htonl(header->magic);
     header->version = htons(header->version);
-    header->count = htons(count);
+    header->count = htons(header->count);
     header->filesize = htonl(filesize);
 
     if (ftruncate(fd, filesize) < 0) {
@@ -51,13 +51,21 @@ int write_file(int fd, header_t *header, employee_t *employees) {
         return STATUS_ERROR;
     }
 
-    int i;
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         employees[i].hours = htonl(employees[i].hours);
         if (write(fd, &employees[i], sizeof(employee_t)) < 0) {
             perror("write");
             return STATUS_ERROR;
         }
+    }
+
+    header->magic = ntohl(header->magic);
+    header->version = ntohs(header->version);
+    header->count = ntohs(header->count);
+    header->filesize = ntohl(filesize);
+
+    for (int i = 0; i < count; i++) {
+        employees[i].hours = ntohl(employees[i].hours);
     }
 
     return STATUS_SUCCESS;

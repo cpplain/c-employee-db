@@ -28,7 +28,13 @@ typedef struct {
 
 typedef struct {
     char data[1024];
-} dbproto_employee_t;
+} dbproto_employee_add_t;
+
+typedef struct {
+    char name[256];
+    char address[256];
+    unsigned int hours;
+} dbproto_employee_list_t;
 
 void dbproto_hdr_hton(dbproto_hdr_t *hdr);
 

@@ -28,6 +28,8 @@ build-srv: $(SRV_BIN)
 
 run-cli: $(CLI_BIN)
 	$(CLI_BIN) -a $(ADDR) -p $(PORT) -n "Frodo Baggins,Bag End,40"
+	$(CLI_BIN) -a $(ADDR) -p $(PORT) -n "Samewise Gamgee,Number 3 Bagshot Row,40"
+	$(CLI_BIN) -a $(ADDR) -p $(PORT) -l
 
 run-srv: $(SRV_BIN)
 	mkdir -p $(DB_DIR)

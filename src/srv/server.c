@@ -1,4 +1,5 @@
 #include "server.h"
+#include "employee.h"
 #include "file.h"
 
 #include "../common.h"
@@ -67,7 +68,7 @@ int accept_new(int newfd, struct pollfd *fds) {
     return STATUS_ERROR;
 }
 
-int start_server(in_port_t port, int dbfd, header_t *header, employee_t *employees) {
+int start_server(in_port_t port, int dbfd, header_t *dbhdr, employee_t *employees) {
     struct pollfd fds[MAX_CLIENTS + 1] = {0};
     buffers buffers = {0};
 
@@ -147,7 +148,7 @@ int start_server(in_port_t port, int dbfd, header_t *header, employee_t *employe
 
                     hdr->ver = PROTO_VER;
                     hdr->type = MSG_ERROR;
-                    hdr->len = 2;
+                    hdr->len = 1;
                     dbproto_hdr_hton(hdr);
 
                     dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
@@ -162,14 +163,33 @@ int start_server(in_port_t port, int dbfd, header_t *header, employee_t *employe
                 }
 
                 if (hdr->type == MSG_EMPLOYEE_ADD) {
-                    dbproto_employee_t *employee = (dbproto_employee_t *)&hdr[1];
-                    add_employee(header, &employees, employee->data);
-                    write_file(dbfd, header, employees);
+                    dbproto_employee_add_t *employee = (dbproto_employee_add_t *)&hdr[1];
+                    add_employee(dbhdr, &employees, employee->data);
+                    write_file(dbfd, dbhdr, employees);
 
                     hdr->ver = PROTO_VER;
                     hdr->type = MSG_EMPLOYEE_ADD;
-                    hdr->len = 1;
+                    hdr->len = 0;
                     dbproto_hdr_hton(hdr);
+
+                    write(fd, buffers[i], sizeof(buffer));
+                    continue;
+                }
+
+                if (hdr->type == MSG_EMPLOYEE_LIST) {
+                    hdr->ver = PROTO_VER;
+                    hdr->type = MSG_EMPLOYEE_LIST;
+                    hdr->len = dbhdr->count;
+                    dbproto_hdr_hton(hdr);
+
+                    dbproto_employee_list_t *list = (dbproto_employee_list_t *)&hdr[1];
+
+                    for (int i = 0; i < dbhdr->count; i++) {
+                        strncpy(list[i].name, employees[i].name, sizeof(employees[i].name));
+                        strncpy(list[i].address, employees[i].address,
+                                sizeof(employees[i].address));
+                        list[i].hours = htons(employees[i].hours);
+                    }
 
                     write(fd, buffers[i], sizeof(buffer));
                     continue;
