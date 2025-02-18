@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         dbproto_hdr_hton(hdr);
 
         dbproto_employee_add_t *employee = (dbproto_employee_add_t *)&hdr[1];
-        strncpy(employee->data, newstr, sizeof(dbproto_employee_add_t));
+        strncpy(employee->data, newstr, sizeof(employee->data));
     }
 
     if (list == 1) {
@@ -114,12 +114,10 @@ int main(int argc, char *argv[]) {
 
     if (hdr->type == MSG_EMPLOYEE_LIST) {
         dbproto_employee_list_t *list = (dbproto_employee_list_t *)&hdr[1];
-        printf("Employees:\n"
-               "    No. Name, Address, Hours\n"
-               "    ------------------------\n");
+        printf("No. Name, Address, Hours\n"
+               "------------------------\n");
         for (int i = 0; i < hdr->len; i++) {
-            printf("    %d. %s, %s, %d\n", i + 1, list[i].name, list[i].address,
-                   ntohs(list[i].hours));
+            printf("%d. %s, %s, %d\n", i + 1, list[i].name, list[i].address, ntohs(list[i].hours));
         }
         printf("\n");
     }

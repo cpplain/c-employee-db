@@ -58,14 +58,96 @@ int init_sock(in_port_t port) {
     return fd;
 }
 
-int accept_new(int newfd, struct pollfd *fds) {
+void handle_new_connection(int listenfd, struct pollfd *fds, int *nfds) {
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+
+    int newfd = accept(listenfd, (struct sockaddr *)&addr, &addrlen);
+    if (newfd == -1) {
+        perror("accept");
+        return;
+    }
+
     for (int i = 1; i <= MAX_CLIENTS; i++) {
         if (fds[i].fd == -1) {
+            printf("New connection %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
             fds[i].fd = newfd;
-            return STATUS_SUCCESS;
+            *nfds += 1;
+            return;
         }
     }
-    return STATUS_ERROR;
+
+    printf("Server full: closing connection %s:%d\n", inet_ntoa(addr.sin_addr),
+           ntohs(addr.sin_port));
+    close(newfd);
+}
+
+void handle_disconnect(struct pollfd *fd, buffer *buf, int *nfds) {
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+    getpeername(fd->fd, (struct sockaddr *)&addr, &addrlen);
+
+    printf("Client disconnected: closing connection %s:%d\n", inet_ntoa(addr.sin_addr),
+           ntohs(addr.sin_port));
+
+    close(fd->fd);
+    reset_state(fd, buf);
+
+    *nfds -= 1;
+}
+
+void handle_proto_mismatch(struct pollfd *fd, buffer *buf, dbproto_hdr_t *hdr, int *nfds) {
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+    getpeername(fd->fd, (struct sockaddr *)&addr, &addrlen);
+    printf("Incorrect protocol version: closing connection %s:%d\n", inet_ntoa(addr.sin_addr),
+           ntohs(addr.sin_port));
+
+    hdr->ver = PROTO_VER;
+    hdr->type = MSG_ERROR;
+    hdr->len = 1;
+    dbproto_hdr_hton(hdr);
+
+    dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
+    strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
+
+    write(fd->fd, buf, sizeof(buffer));
+    close(fd->fd);
+    reset_state(fd, buf);
+
+    *nfds -= 1;
+}
+
+void handle_add_employee(int fd, buffer *buf, dbproto_hdr_t *hdr, header_t *dbhdr,
+                         employee_t **employees, int dbfd) {
+    dbproto_employee_add_t *employee = (dbproto_employee_add_t *)&hdr[1];
+    add_employee(dbhdr, employees, employee->data);
+    write_file(dbfd, dbhdr, *employees);
+
+    hdr->ver = PROTO_VER;
+    hdr->type = MSG_EMPLOYEE_ADD;
+    hdr->len = 0;
+    dbproto_hdr_hton(hdr);
+
+    write(fd, buf, sizeof(buffer));
+}
+
+void handle_list_employees(int fd, buffer *buf, dbproto_hdr_t *hdr, header_t *dbhdr,
+                           employee_t *employees) {
+    hdr->ver = PROTO_VER;
+    hdr->type = MSG_EMPLOYEE_LIST;
+    hdr->len = dbhdr->count;
+    dbproto_hdr_hton(hdr);
+
+    dbproto_employee_list_t *list = (dbproto_employee_list_t *)&hdr[1];
+
+    for (int i = 0; i < dbhdr->count; i++) {
+        strncpy(list[i].name, employees[i].name, sizeof(employees[i].name));
+        strncpy(list[i].address, employees[i].address, sizeof(employees[i].address));
+        list[i].hours = htons(employees[i].hours);
+    }
+
+    write(fd, buf, sizeof(buffer));
 }
 
 int start_server(in_port_t port, int dbfd, header_t *dbhdr, employee_t *employees) {
@@ -92,24 +174,7 @@ int start_server(in_port_t port, int dbfd, header_t *dbhdr, employee_t *employee
         // Handle new connections
         if (fds[0].revents & POLLIN) {
             nevents--;
-
-            struct sockaddr_in addr;
-            socklen_t addrlen = sizeof(addr);
-
-            int newfd = accept(listenfd, (struct sockaddr *)&addr, &addrlen);
-            if (newfd == -1) {
-                perror("accept");
-            } else {
-                if (accept_new(newfd, fds) == STATUS_ERROR) {
-                    printf("Server full: closing connection %s:%d\n", inet_ntoa(addr.sin_addr),
-                           ntohs(addr.sin_port));
-                    close(newfd);
-                } else {
-                    printf("New connection %s:%d\n", inet_ntoa(addr.sin_addr),
-                           ntohs(addr.sin_port));
-                    nfds++;
-                }
-            }
+            handle_new_connection(listenfd, fds, &nfds);
         }
 
         // Handle poll events
@@ -120,19 +185,8 @@ int start_server(in_port_t port, int dbfd, header_t *dbhdr, employee_t *employee
                 int fd = fds[i].fd;
                 ssize_t bytes_read = read(fd, &buffers[i], sizeof(buffer));
 
-                // Handle disconnect
                 if (bytes_read <= 0) {
-                    struct sockaddr_in addr;
-                    socklen_t addrlen = sizeof(addr);
-                    getpeername(fd, (struct sockaddr *)&addr, &addrlen);
-
-                    printf("Client disconnected: closing connection %s:%d\n",
-                           inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-                    close(fd);
-                    reset_state(&fds[i], &buffers[i]);
-
-                    nfds--;
+                    handle_disconnect(&fds[i], &buffers[i], &nfds);
                     continue;
                 }
 
@@ -140,58 +194,17 @@ int start_server(in_port_t port, int dbfd, header_t *dbhdr, employee_t *employee
                 dbproto_hdr_ntoh(hdr);
 
                 if (hdr->ver != PROTO_VER) {
-                    struct sockaddr_in addr;
-                    socklen_t addrlen = sizeof(addr);
-                    getpeername(fd, (struct sockaddr *)&addr, &addrlen);
-                    printf("Incorrect protocol version: closing connection %s:%d\n",
-                           inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-                    hdr->ver = PROTO_VER;
-                    hdr->type = MSG_ERROR;
-                    hdr->len = 1;
-                    dbproto_hdr_hton(hdr);
-
-                    dbproto_error_t *err = (dbproto_error_t *)&hdr[1];
-                    strncpy(err->msg, "incorrect protocol version", sizeof(err->msg));
-
-                    write(fd, buffers[i], sizeof(buffer));
-                    close(fd);
-                    reset_state(&fds[i], &buffers[i]);
-
-                    nfds--;
+                    handle_proto_mismatch(&fds[i], &buffers[i], hdr, &nfds);
                     continue;
                 }
 
                 if (hdr->type == MSG_EMPLOYEE_ADD) {
-                    dbproto_employee_add_t *employee = (dbproto_employee_add_t *)&hdr[1];
-                    add_employee(dbhdr, &employees, employee->data);
-                    write_file(dbfd, dbhdr, employees);
-
-                    hdr->ver = PROTO_VER;
-                    hdr->type = MSG_EMPLOYEE_ADD;
-                    hdr->len = 0;
-                    dbproto_hdr_hton(hdr);
-
-                    write(fd, buffers[i], sizeof(buffer));
+                    handle_add_employee(fd, &buffers[i], hdr, dbhdr, &employees, dbfd);
                     continue;
                 }
 
                 if (hdr->type == MSG_EMPLOYEE_LIST) {
-                    hdr->ver = PROTO_VER;
-                    hdr->type = MSG_EMPLOYEE_LIST;
-                    hdr->len = dbhdr->count;
-                    dbproto_hdr_hton(hdr);
-
-                    dbproto_employee_list_t *list = (dbproto_employee_list_t *)&hdr[1];
-
-                    for (int i = 0; i < dbhdr->count; i++) {
-                        strncpy(list[i].name, employees[i].name, sizeof(employees[i].name));
-                        strncpy(list[i].address, employees[i].address,
-                                sizeof(employees[i].address));
-                        list[i].hours = htons(employees[i].hours);
-                    }
-
-                    write(fd, buffers[i], sizeof(buffer));
+                    handle_list_employees(fd, &buffers[i], hdr, dbhdr, employees);
                     continue;
                 }
             }
